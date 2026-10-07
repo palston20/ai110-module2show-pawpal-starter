@@ -5,12 +5,18 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+
+
 - What classes did you include, and what responsibilities did you assign to each?
+In my initial UML design, I had the classes Pet, Owner, Scheduler, and Task. Within the Pet and Owner classes, I made sure that the classes could hold important information about the each class, such as the owner's priorities and the pet's species and breed. Scheduler and Task classes will be related to handling how 
 
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+
+Yes, changes that I made during my implementation were making sure I could handle if the Owner has more than one pet and making priorities sortbale for the owner. 
 
 ---
 
