@@ -1,15 +1,45 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
+    %% PawPal+ class design. Keep this file updated so it matches your final implementation.
 
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +str name
+        +int available_minutes
+        +list~str~ preferences
+        +list~Pet~ pets
+        +add_pet(pet: Pet) None
+        +get_owner_info() str
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +int age
+        +list~Task~ tasks
+        +get_pet_info() str
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        +str title
+        +int duration_minutes
+        +str priority
+        +str category
+        +bool completed
+        +edit(title, duration_minutes, priority) None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +Pet pet
+        +list~Task~ tasks
+        +enter_task(task: Task) None
+        +edit_task(task_index: int, title, duration_minutes, priority) None
+        +generate_plan() list~Task~
+        +explain_plan() str
+    }
+
+    Owner "1" --> "1..*" Pet : owns
+    Pet "1" --> "0..*" Task : needs
+    Scheduler --> Owner : uses constraints from
+    Scheduler --> Pet : plans for
+    Scheduler "1" --> "0..*" Task : manages
