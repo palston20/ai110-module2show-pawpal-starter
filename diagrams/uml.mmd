@@ -22,6 +22,7 @@ classDiagram
         +add_task(task: Task) None
         +remove_task(task: Task) None
         +get_pending_tasks() list~Task~
+        +get_completed_tasks() list~Task~
         +get_pet_info() str
     }
 
@@ -32,9 +33,11 @@ classDiagram
         +str time
         +str frequency
         +bool completed
+        +date due_date
         +priority_rank() int
         +mark_complete() None
         +mark_incomplete() None
+        +next_occurrence() Task
         +edit(description, duration_minutes, priority, time, frequency) None
     }
 
@@ -42,12 +45,17 @@ classDiagram
         +Owner owner
         +list~tuple~Pet, Task~~ plan
         +list~tuple~Pet, Task~~ skipped
+        +list~str~ conflicts
         +get_all_tasks(include_completed: bool) list~tuple~Pet, Task~~
+        +filter_by_status(completed: bool) list~tuple~Pet, Task~~
         +enter_task(pet: Pet, task: Task) None
+        +mark_task_complete(task: Task) Task
+        +get_tasks_due(day: date) list~tuple~Pet, Task~~
+        +detect_conflicts(pairs) list~str~
         +edit_task(task: Task, **changes) None
         +sort_by_priority(pairs) list~tuple~Pet, Task~~
         +sort_by_time(pairs) list~tuple~Pet, Task~~
-        +generate_plan() list~tuple~Pet, Task~~
+        +generate_plan(day: date) list~tuple~Pet, Task~~
         +explain_plan() str
     }
 

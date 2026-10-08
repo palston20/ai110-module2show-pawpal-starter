@@ -32,6 +32,8 @@ Yes, changes that I made during my implementation were making sure I could handl
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
 
+The scheduler picks tasks heavily based on priority. Tasks are sorted from highest to lowest priority. Adding higher priority tasks instead of trying to fit multiple medium tasks allows the user to get the most important tasks done first. 
+
 ---
 
 ## 3. AI Collaboration

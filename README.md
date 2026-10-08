@@ -78,14 +78,13 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.sort_by_priority`, `Scheduler.sort_by_time` | Tasks are picked highest priority first, and shorter tasks win ties. The final plan is then reordered by preferred start time ("HH:MM"), with "anytime" tasks last. Times are zero-padded on input, so `"8:00"` sorts correctly. |
+| Filtering | `Scheduler.generate_plan`, `Scheduler.get_tasks_due`, `Scheduler.filter_by_status` | Only pending tasks due today or earlier are considered, so overdue tasks carry over. Tasks are added until the owner's `available_minutes` runs out, and anything that doesn't fit goes into `scheduler.skipped`. `filter_by_status(True/False)` returns completed or pending tasks. |
+| Conflict handling | `Scheduler.detect_conflicts` | Flags tasks with the same due date and the same start time, for one pet or across pets. Runs automatically after `generate_plan` and appears as warnings in `explain_plan`. Limitation: it only catches identical start times, not overlapping durations (e.g., a 30-min task at 08:00 and another at 08:15). |
+| Recurring tasks | `Task.next_occurrence`, `Scheduler.mark_task_complete` | Completing a `daily` or `weekly` task automatically adds a fresh copy to the same pet, due 1 day or 1 week later. `once` tasks don't repeat. |
+
 
 ## 📸 Demo Walkthrough
 
