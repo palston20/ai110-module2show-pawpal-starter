@@ -8,37 +8,10 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
 
-st.markdown(
-    """
-Welcome to the PawPal+ starter app.
-
-This file is intentionally thin. It gives you a working Streamlit app so you can start quickly,
-but **it does not implement the project logic**. Your job is to design the system and build it.
-
-Use this app as your interactive demo once your backend classes/functions exist.
-"""
+st.caption(
+    "Plan your pets' care for the day. PawPal+ picks the most important tasks that fit "
+    "your time, puts them in order, and warns you about clashes."
 )
-
-with st.expander("Scenario", expanded=True):
-    st.markdown(
-        """
-**PawPal+** is a pet care planning assistant. It helps a pet owner plan care tasks
-for their pet(s) based on constraints like time, priority, and preferences.
-
-You will design and implement the scheduling logic and connect it to this Streamlit UI.
-"""
-    )
-
-with st.expander("What you need to build", expanded=True):
-    st.markdown(
-        """
-At minimum, your system should:
-- Represent pet care tasks (what needs to happen, how long it takes, priority)
-- Represent the pet and the owner (basic info and preferences)
-- Build a plan/schedule for a day that chooses and orders tasks based on constraints
-- Explain the plan (why each task was chosen and when it happens)
-"""
-    )
 
 st.divider()
 
@@ -129,40 +102,102 @@ else:
             except ValueError as error:
                 st.error(str(error))
 
-all_tasks = scheduler.get_all_tasks(include_completed=True)
-if all_tasks:
-    st.write("Current tasks:")
-    st.table(
-        [
-            {
-                "Pet": pet.name,
-                "Due": task.due_date.isoformat(),
-                "Time": task.time or "anytime",
-                "Task": task.description,
-                "Minutes": task.duration_minutes,
-                "Priority": task.priority,
-                "Frequency": task.frequency,
-                "Done": task.completed,
-            }
-            for pet, task in all_tasks
-        ]
-    )
+PRIORITY_LABEL = {"high": "🔴 high", "medium": "🟡 medium", "low": "🟢 low"}
+CONFLICT_TIP = "Consider moving one of them to a different time so you're not in two places at once."
+
+
+def task_label(pet, task):
+    """Return a short readable label for a task, used in dropdowns."""
+    return f"{task.time or 'anytime'} - {task.description} ({pet.name}, due {task.due_date:%b %d})"
+
+
+st.subheader("Your Tasks")
+if scheduler.get_all_tasks(include_completed=True):
+    show = st.radio("Show", ["Pending", "Completed", "All"], horizontal=True)
+    if show == "All":
+        pairs = scheduler.get_all_tasks(include_completed=True)
+    else:
+        pairs = scheduler.filter_by_status(completed=(show == "Completed"))
+    # sort by time first, then by due date; the stable sort keeps time order within each day
+    pairs = sorted(scheduler.sort_by_time(pairs), key=lambda pt: pt[1].due_date)
+
+    if pairs:
+        st.table(
+            [
+                {
+                    "Due": f"{task.due_date:%b %d}",
+                    "Time": task.time or "anytime",
+                    "Task": task.description,
+                    "Pet": pet.name,
+                    "Minutes": task.duration_minutes,
+                    "Priority": PRIORITY_LABEL[task.priority],
+                    "Repeats": task.frequency,
+                    "Status": "✅ done" if task.completed else "⏳ pending",
+                }
+                for pet, task in pairs
+            ]
+        )
+    else:
+        st.info(f"No {show.lower()} tasks.")
+
     for warning in scheduler.detect_conflicts():
-        st.warning(warning)
+        st.warning(f"{warning} {CONFLICT_TIP}", icon="⚠️")
+
+    pending = scheduler.sort_by_time(scheduler.filter_by_status(completed=False))
+    if pending:
+        col1, col2 = st.columns([3, 1], vertical_alignment="bottom")
+        with col1:
+            choice = st.selectbox(
+                "Mark a task complete",
+                range(len(pending)),
+                format_func=lambda i: task_label(*pending[i]),
+            )
+        with col2:
+            complete_clicked = st.button("Mark done", width="stretch")
+        if complete_clicked:
+            pet, task = pending[choice]
+            next_task = scheduler.mark_task_complete(task)
+            message = f"Nice! '{task.description}' for {pet.name} is done."
+            if next_task is not None:
+                message += f" The next one is due {next_task.due_date:%A, %b %d}."
+            st.session_state.flash = message
+            st.rerun()
+
+    if "flash" in st.session_state:
+        st.success(st.session_state.pop("flash"))
 elif owner.pets:
     st.info("No tasks yet. Add one above.")
 
 st.divider()
 
-st.subheader("Build Schedule")
+st.subheader("Today's Schedule")
 
-if st.button("Generate schedule"):
+if st.button("Generate schedule", type="primary"):
+    st.session_state.show_plan = True
+
+# Keep showing the plan after it's generated, rebuilding it so it reflects any changes.
+if st.session_state.get("show_plan"):
     plan = scheduler.generate_plan()
     if not plan and not scheduler.skipped:
-        st.info("There are no pending tasks to schedule.")
+        st.info("Nothing left to schedule today. 🎉")
     else:
+        # Conflicts go first so the owner sees them before reading the plan.
         for warning in scheduler.conflicts:
-            st.warning(warning)
+            st.warning(f"**Time clash:** {warning} {CONFLICT_TIP}", icon="⚠️")
+
+        used = sum(task.duration_minutes for _, task in plan)
+        budget = owner.available_minutes
+        if not scheduler.skipped:
+            st.success(f"Everything fits! {len(plan)} task(s) using {used} of {budget} minutes.")
+        st.progress(min(used / budget, 1.0) if budget else 1.0, text=f"{used} / {budget} minutes planned")
+
+        # Count tasks per (date, time) slot so clashing rows can be marked in the table.
+        slot_counts = {}
+        for _, task in plan:
+            if task.time:
+                slot = (task.due_date, task.time)
+                slot_counts[slot] = slot_counts.get(slot, 0) + 1
+
         if plan:
             st.table(
                 [
@@ -171,10 +206,30 @@ if st.button("Generate schedule"):
                         "Task": task.description,
                         "Pet": pet.name,
                         "Minutes": task.duration_minutes,
-                        "Priority": task.priority,
+                        "Priority": PRIORITY_LABEL[task.priority],
+                        "Note": "⚠️ clash" if slot_counts.get((task.due_date, task.time), 0) > 1 else "",
                     }
                     for pet, task in plan
                 ]
             )
-        st.markdown("**Why this plan?**")
-        st.text(scheduler.explain_plan())
+
+        if scheduler.skipped:
+            st.warning(
+                f"{len(scheduler.skipped)} task(s) didn't fit in your {budget} minutes. "
+                "Higher-priority tasks were scheduled first.",
+                icon="⏰",
+            )
+            st.table(
+                [
+                    {
+                        "Task": task.description,
+                        "Pet": pet.name,
+                        "Minutes": task.duration_minutes,
+                        "Priority": PRIORITY_LABEL[task.priority],
+                    }
+                    for pet, task in scheduler.skipped
+                ]
+            )
+
+        with st.expander("Why this plan?"):
+            st.text(scheduler.explain_plan())

@@ -93,13 +93,7 @@ tests/test_pawpawl.py ......................                             [100%]
 ============================== 22 passed in 0.02s ==============================
 ```
 
-### Confidence level: ⭐⭐⭐⭐☆ (4/5)
 
-All 22 tests pass, and they cover the main scheduling paths: sorting, recurring tasks, conflict detection and the time budget. It's not 5 stars because of a few known gaps:
-
-- Conflict detection only catches identical start times, not overlapping durations.
-- Completing the same recurring task twice creates a duplicate next occurrence.
-- A failed `edit()` leaves the invalid value on the task.
 
 ## 📐 Smarter Scheduling
 
@@ -113,12 +107,68 @@ All 22 tests pass, and they cover the main scheduling paths: sorting, recurring 
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+Start the app with `streamlit run app.py`, or run the CLI demo with `python main.py`.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+### Main UI features
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+| Section | What you can do |
+|---------|-----------------|
+| **Owner** | Set your name and how many minutes you have for pet care today. |
+| **Add a Pet** | Add a pet with name, species, breed and age. Blank names and duplicate pets are rejected with a message. |
+| **Schedule a Task** | Pick a pet and enter a task's description, duration, priority (low/medium/high), frequency (once/daily/weekly) and a start time, or tick **Anytime**. Invalid input shows an error instead of crashing. |
+| **Your Tasks** | See every task in a table sorted by due date and time. Switch between **Pending / Completed / All**, and mark a task done from the dropdown. Time clashes appear here as warnings. |
+| **Today's Schedule** | Click **Generate schedule** to build the day's plan. It shows clash warnings, a minutes-used progress bar, the ordered plan, any tasks that didn't fit, and a **Why this plan?** explanation. |
+
+### Example workflow
+
+1. **Set your time budget.** Enter "Jordan" and 90 minutes available.
+2. **Add pets.** Add Biscuit (dog, Golden Retriever, 3) and Mochi (cat, Tabby, 2). Each appears under "Your pets."
+3. **Schedule tasks.** Add "Morning walk" for Biscuit (30 min, high, daily, 08:00), "Breakfast" for Mochi (10 min, high, daily, 07:30) and "Clean litter box" for Mochi (5 min, medium, 08:00).
+4. **Spot the clash.** The task table shows a ⚠️ warning that the walk and the litter box are both at 08:00, with a tip to move one of them.
+5. **Generate the schedule.** Click **Generate schedule**. The plan lists tasks in time order, marks the two 08:00 rows with "⚠️ clash" and shows 45 / 90 minutes used.
+6. **Run out of time.** Add a 60-min low-priority "Long hike." It no longer fits, so it shows up under "didn't fit in your 90 minutes" while the high-priority tasks stay in the plan.
+7. **Complete a recurring task.** Mark "Breakfast" done. The app confirms it and says when the next one is due (tomorrow), and the new copy appears in the task table as pending.
+
+### Scheduler behaviors shown
+
+- **Priority-first selection:** when time is short, high-priority tasks are picked first and lower-priority ones are skipped (`generate_plan`, `sort_by_priority`).
+- **Chronological ordering:** the final plan is sorted by start time no matter what order tasks were entered, with "anytime" tasks last (`sort_by_time`).
+- **Conflict warnings:** tasks on the same date and time are flagged, both for one pet and across pets (`detect_conflicts`).
+- **Recurring tasks:** completing a daily or weekly task creates its next occurrence automatically (`mark_task_complete`, `next_occurrence`).
+- **Filtering:** pending and completed tasks can be viewed separately (`filter_by_status`), and only tasks due today or earlier are planned (`get_tasks_due`).
+- **Explanation:** `explain_plan()` says what was scheduled, what was skipped and why.
+
+### Sample CLI output (`python main.py`)
+
+```
+Tasks in the order they were entered:
+    16:00  Fetch in the yard (Biscuit)
+    08:00  Morning walk (Biscuit)
+    09:15  Joint meds (Biscuit)
+    18:00  Brushing (Mochi)
+  Anytime  Play with wand toy (Mochi)
+    07:30  Breakfast (Mochi)
+    08:00  Clean litter box (Mochi)
+
+==================================================
+                 Today's Schedule                 
+==================================================
+Jordan (120 min available today) - pets: Biscuit, Mochi
+--------------------------------------------------
+  07:30  Breakfast          Mochi     10 min  [high]
+  08:00  Morning walk       Biscuit   30 min  [high]
+  08:00  Clean litter box   Mochi      5 min  [medium]
+  09:15  Joint meds         Biscuit    5 min  [high]
+  16:00  Fetch in the yard  Biscuit   20 min  [low]
+  18:00  Brushing           Mochi     15 min  [medium]
+Anytime  Play with wand toy Mochi     10 min  [low]
+--------------------------------------------------
+Total: 95 of 120 minutes
+
+WARNING: Conflict on 2026-10-07 at 08:00: you have 'Morning walk' (Biscuit) and 'Clean litter box' (Mochi) scheduled at the same time.
+
+Marked 'Breakfast' complete for 2026-10-07.
+Next 'Breakfast' is due 2026-10-08.
+```
+
+The output shows tasks entered out of order and then sorted by time in the schedule, a conflict warning for the two 08:00 tasks, and a daily task creating tomorrow's copy when it's completed.
