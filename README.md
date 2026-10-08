@@ -62,19 +62,44 @@ Total: 75 of 90 minutes
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite from the project root:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+### What the tests cover
+
+The 22 tests in `tests/test_pawpawl.py` cover the scheduler's core behavior:
+
+- **Sorting:** plans come back in chronological order regardless of priority or the order tasks were added. Single-digit hours (`"8:00"`), midnight edge times and multiple "anytime" tasks are all handled. Priority ties go to the shorter task.
+- **Recurring tasks:** completing a daily task creates a copy due tomorrow (including year rollover), and completing a weekly task creates one due next week. `once` tasks don't repeat. The new copy keeps the task's details, belongs to the same pet and only shows up in the plan for its due date.
+- **Conflict detection:** tasks with the same date and start time are flagged, for one pet or across pets. Three clashing tasks produce one warning. "Anytime", completed, skipped and different-day tasks are not flagged. Warnings appear in `explain_plan()`.
+- **Basics:** marking tasks complete, adding tasks to pets, and filtering by completed or pending status.
+
+### Sample test output
 
 ```
-# Paste your pytest output here
+============================= test session starts ==============================
+platform darwin -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/parisalston/Desktop/python folder/ai-projects/ai110-module2show-pawpal-starter
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collected 22 items
+
+tests/test_pawpawl.py ......................                             [100%]
+
+============================== 22 passed in 0.02s ==============================
 ```
+
+### Confidence level: ⭐⭐⭐⭐☆ (4/5)
+
+All 22 tests pass, and they cover the main scheduling paths: sorting, recurring tasks, conflict detection and the time budget. It's not 5 stars because of a few known gaps:
+
+- Conflict detection only catches identical start times, not overlapping durations.
+- Completing the same recurring task twice creates a duplicate next occurrence.
+- A failed `edit()` leaves the invalid value on the task.
 
 ## 📐 Smarter Scheduling
 
